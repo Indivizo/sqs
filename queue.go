@@ -52,7 +52,8 @@ func (queue *Queue) Init() (err error) {
 	resp, err := client.CreateQueue(params)
 	if err != nil {
 		log.WithFields(log.Fields{
-			"error": err,
+			"queueName": queue.Name,
+			"error":     err,
 		}).Error("Createing the dead letter queue")
 		return
 	}
@@ -85,7 +86,8 @@ func (queue *Queue) Init() (err error) {
 	resp, err = client.CreateQueue(params)
 	if err != nil {
 		log.WithFields(log.Fields{
-			"error": err,
+			"queueName": queue.Name,
+			"error":     err,
 		}).Error("Createing the queue")
 		return
 	}
@@ -111,6 +113,7 @@ func (queue *Queue) SendMessage(messageBody interface{}) (resp *sqs.SendMessageO
 	msg, err := json.Marshal(messageBody)
 	if err != nil {
 		log.WithFields(log.Fields{
+			"queueName":   queue.Name,
 			"error":       err,
 			"messageBody": messageBody,
 		}).Error("Marshal the message body for the queue")
@@ -209,8 +212,9 @@ func (queue *Queue) GetAttributesByQueueURL(url string, attributeNames []*string
 
 	if err != nil {
 		log.WithFields(log.Fields{
-			"queueUrl": url,
-			"error":    err,
+			"queueName": queue.Name,
+			"queueUrl":  url,
+			"error":     err,
 		}).Error("Getting queue attributes")
 		return
 	}
