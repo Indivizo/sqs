@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"strings"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/aws/aws-sdk-go/service/sqs"
+	log "github.com/sirupsen/logrus"
 )
 
 // UnmarshalMessageBody will return a MessageBody struct from the given sqs.Message.
