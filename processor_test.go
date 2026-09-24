@@ -28,7 +28,7 @@ func sqsMessage(n int, body string) types.Message {
 
 // runProcessor runs p until it returns, failing the test if that takes
 // longer than timeout.
-func runProcessor(t *testing.T, ctx context.Context, p *Processor[testMessage], timeout time.Duration) error {
+func runProcessor(ctx context.Context, t *testing.T, p *Processor[testMessage], timeout time.Duration) error {
 	t.Helper()
 	done := make(chan error, 1)
 	go func() { done <- p.Run(ctx) }()
@@ -68,7 +68,7 @@ func TestProcessor_HandsEachMessageToHandlerAndDeletesIt(t *testing.T) {
 	}}
 
 	// when
-	err := runProcessor(t, ctx, p, time.Second)
+	err := runProcessor(ctx, t, p, time.Second)
 
 	// then
 	assert.ErrorIs(t, err, context.Canceled)
@@ -98,7 +98,7 @@ func TestProcessor_DecodesEachMessageIntoAFreshValue(t *testing.T) {
 	}}
 
 	// when
-	_ = runProcessor(t, ctx, p, time.Second)
+	_ = runProcessor(ctx, t, p, time.Second)
 
 	// then the second message carries no trace of the first
 	require.Len(t, handled, 2)
@@ -121,7 +121,7 @@ func TestProcessor_BacksOffAfterReceiveError(t *testing.T) {
 	}
 
 	// when
-	err := runProcessor(t, ctx, p, time.Second)
+	err := runProcessor(ctx, t, p, time.Second)
 
 	// then it retried at the backoff pace: at 0, 40 and 80 ms
 	assert.ErrorIs(t, err, context.DeadlineExceeded)
@@ -141,7 +141,7 @@ func TestProcessor_LeavesMessageWhenHandlerFails(t *testing.T) {
 	}}
 
 	// when
-	_ = runProcessor(t, ctx, p, time.Second)
+	_ = runProcessor(ctx, t, p, time.Second)
 
 	// then SQS redelivers it once the visibility timeout lapses
 	assert.Empty(t, api.deleted)
@@ -165,7 +165,7 @@ func TestProcessor_RecoversFromHandlerPanicAndKeepsProcessing(t *testing.T) {
 	}}
 
 	// when
-	err := runProcessor(t, ctx, p, time.Second)
+	err := runProcessor(ctx, t, p, time.Second)
 
 	// then the panicking message stays queued and the next one is handled
 	assert.ErrorIs(t, err, context.Canceled)
@@ -190,7 +190,7 @@ func TestProcessor_LeavesUndecodableMessageForRedelivery(t *testing.T) {
 	}}
 
 	// when
-	_ = runProcessor(t, ctx, p, time.Second)
+	_ = runProcessor(ctx, t, p, time.Second)
 
 	// then it reaches the dead-letter queue after MaxReceiveCount receives
 	assert.Zero(t, handled)
@@ -211,7 +211,7 @@ func TestProcessor_StopsPromptlyWhenCancelledDuringBackoff(t *testing.T) {
 	}
 
 	// when
-	err := runProcessor(t, ctx, p, time.Second)
+	err := runProcessor(ctx, t, p, time.Second)
 
 	// then
 	assert.ErrorIs(t, err, context.Canceled)

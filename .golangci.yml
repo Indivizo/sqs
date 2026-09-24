@@ -1,0 +1,30 @@
+version: "2"
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - noctx
+    - revive
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - errcheck
+          - noctx
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+
+# The baseline for this package is zero issues. Without these two, golangci-lint
+# applies its defaults (max-issues-per-linter: 50, max-same-issues: 3) and
+# truncates the report — which is how a "53-issue baseline" masked the real 123
+# for months, with revive pinned at its display ceiling so the next 50
+# regressions would have landed invisibly. Any output at all is a regression.
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
