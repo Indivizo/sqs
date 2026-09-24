@@ -28,6 +28,7 @@ type fakeAPI struct {
 	receives         []*sqs.ReceiveMessageInput
 	receiveResponses [][]types.Message // one slice per ReceiveMessage call; empty once exhausted
 	receiveErr       error
+	onReceive        func(call int) // called with the 1-based call number, before answering
 
 	deleted   []*sqs.DeleteMessageInput
 	deleteErr error
@@ -73,6 +74,9 @@ func (f *fakeAPI) SendMessage(_ context.Context, params *sqs.SendMessageInput, _
 func (f *fakeAPI) ReceiveMessage(_ context.Context, params *sqs.ReceiveMessageInput, _ ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error) {
 	f.calls = append(f.calls, "ReceiveMessage")
 	f.receives = append(f.receives, params)
+	if f.onReceive != nil {
+		f.onReceive(len(f.receives))
+	}
 	if f.receiveErr != nil {
 		return nil, f.receiveErr
 	}
