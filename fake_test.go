@@ -2,9 +2,11 @@ package queue
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
+	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 )
 
 // fakeAPI is a hand-written API. It records every call in order and
@@ -19,6 +21,16 @@ type fakeAPI struct {
 	attributeRequests []*sqs.GetQueueAttributesInput
 	queueArn          string
 	attributesErr     error
+
+	sent    []*sqs.SendMessageInput
+	sendErr error
+
+	receives         []*sqs.ReceiveMessageInput
+	receiveResponses [][]types.Message // one slice per ReceiveMessage call; empty once exhausted
+	receiveErr       error
+
+	deleted   []*sqs.DeleteMessageInput
+	deleteErr error
 }
 
 var _ API = (*fakeAPI)(nil)
@@ -49,18 +61,34 @@ func (f *fakeAPI) GetQueueAttributes(_ context.Context, params *sqs.GetQueueAttr
 	return &sqs.GetQueueAttributesOutput{Attributes: map[string]string{"QueueArn": f.queueArn}}, nil
 }
 
-func (f *fakeAPI) SendMessage(_ context.Context, _ *sqs.SendMessageInput, _ ...func(*sqs.Options)) (*sqs.SendMessageOutput, error) {
+func (f *fakeAPI) SendMessage(_ context.Context, params *sqs.SendMessageInput, _ ...func(*sqs.Options)) (*sqs.SendMessageOutput, error) {
 	f.calls = append(f.calls, "SendMessage")
-	return &sqs.SendMessageOutput{}, nil
+	f.sent = append(f.sent, params)
+	if f.sendErr != nil {
+		return nil, f.sendErr
+	}
+	return &sqs.SendMessageOutput{MessageId: aws.String("message-" + strconv.Itoa(len(f.sent)))}, nil
 }
 
-func (f *fakeAPI) ReceiveMessage(_ context.Context, _ *sqs.ReceiveMessageInput, _ ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error) {
+func (f *fakeAPI) ReceiveMessage(_ context.Context, params *sqs.ReceiveMessageInput, _ ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error) {
 	f.calls = append(f.calls, "ReceiveMessage")
-	return &sqs.ReceiveMessageOutput{}, nil
+	f.receives = append(f.receives, params)
+	if f.receiveErr != nil {
+		return nil, f.receiveErr
+	}
+	var msgs []types.Message
+	if i := len(f.receives) - 1; i < len(f.receiveResponses) {
+		msgs = f.receiveResponses[i]
+	}
+	return &sqs.ReceiveMessageOutput{Messages: msgs}, nil
 }
 
-func (f *fakeAPI) DeleteMessage(_ context.Context, _ *sqs.DeleteMessageInput, _ ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
+func (f *fakeAPI) DeleteMessage(_ context.Context, params *sqs.DeleteMessageInput, _ ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
 	f.calls = append(f.calls, "DeleteMessage")
+	f.deleted = append(f.deleted, params)
+	if f.deleteErr != nil {
+		return nil, f.deleteErr
+	}
 	return &sqs.DeleteMessageOutput{}, nil
 }
 
